@@ -159,21 +159,18 @@
     <div>
       <x-filament::button
         @click="exportHTML()"
-        icon="heroicon-m-code-bracket"
-      >
-          Export HTML
+        icon="heroicon-m-code-bracket">
+        Export HTML
       </x-filament::button>
       <x-filament::button
         @click="exportImage()"
-          icon="heroicon-m-photo"
-      >
-          Export Image
+        icon="heroicon-m-photo">
+        Export Image
       </x-filament::button>
       <x-filament::button
-        @click="loadCanvas(4)"
-          icon="heroicon-m-photo"
-      >
-          Load Canvas
+        @click="loadCanvas(3)"
+        icon="heroicon-m-photo">
+        Load Canvas
       </x-filament::button>
       <!-- <button onclick="exportImage()">Export Image</button>
     <button onclick="exportHTML()">Export HTML</button> -->
@@ -302,70 +299,81 @@
     }
 
     async function exportHTML() {
-  try {
-    // 1. Get canvas SVG string (for HTML export)
-    const svg = canvas.toSVG();
+      try {
+        const svg = canvas.toSVG();
+        const canvasId = window.currentCanvasId ?? null;
+        const backgroundColor = canvas.backgroundColor; // get background color
 
-    // 2. Get canvas object JSON (for reloading later)
-    const canvasJson = canvas.toJSON();
+        const response = await fetch('/save-html', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({
+            html: svg,
+            id: canvasId,
+            background: backgroundColor,
+            width: canvas.getWidth(),
+            height: canvas.getHeight(),
+          }),
+        });
 
-    // 3. Get selected paper size (A4, A5, etc.)
-    const presetSize = document.querySelector('select[onchange="applyPresetSize(this.value)"]').value;
+        const result = await response.json();
 
-    // 4. Package all data into an object
-    const fullData = {
-      svg: svg,
-      json: canvasJson,
-      presetSize: presetSize,
-    };
-
-    // 5. Send to your Laravel route
-    const response = await fetch('/save-html', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(fullData),
-    });
-
-    // 6. Handle response
-    if (response.ok) {
-      const data = await response.json();
-      alert('Canvas saved successfully!');
-    } else {
-      console.error('Failed to save:', await response.text());
+        if (result.success) {
+          alert('Canvas saved!');
+          window.currentCanvasId = result.id;
+        } else {
+          alert('Failed to save canvas');
+        }
+      } catch (error) {
+        console.error('Error saving canvas:', error);
+      }
     }
-  } catch (error) {
-    console.error('Export failed:', error);
-  }
-}
 
 
     async function loadCanvas(id) {
-  try {
-    const res = await fetch(`/canvas/${id}`);
-    const { html } = await res.json();
-    const json = JSON.parse(html);
+      id = 3;
+      try {
+        const response = await fetch(`/canvas/${id}`);
+        const result = await response.json();
 
-    canvas.loadFromJSON(json, () => {
-      canvas.renderAll();
-      window.canvasRecordId = id;
+        if (result.html) {
+          const width = result.width ?? 800;
+          const height = result.height ?? 500;
 
-      // Sync toolbar controls
-      document.getElementById('canvasWidth').value = canvas.getWidth();
-      document.getElementById('canvasHeight').value = canvas.getHeight();
+          // Set size
+          canvas.setWidth(width);
+          canvas.setHeight(height);
 
-      const bgColor = canvas.backgroundColor;
-      document.getElementById('canvasBG').value = rgbToHex(bgColor);
+          // Restore background color
+          canvas.setBackgroundColor(result.background || '#ffffff', canvas.renderAll.bind(canvas));
 
-      updateControls(); // Sync fillColor, fontSize, textAlign
-    });
+          // Update inputs
+          document.getElementById('canvasWidth').value = width;
+          document.getElementById('canvasHeight').value = height;
 
-  } catch (e) {
-    console.error('Failed to load:', e);
-  }
-}
+          fabric.loadSVGFromString(result.html, (objects, options) => {
+            canvas.clear(); // this also removes background, so re-set it below
+            canvas.setBackgroundColor(result.background || '#ffffff', canvas.renderAll.bind(canvas));
+
+            const obj = fabric.util.groupSVGElements(objects, options);
+            canvas.add(obj);
+            canvas.renderAll();
+          });
+
+          window.currentCanvasId = result.id;
+        } else {
+          alert('Canvas data is empty');
+        }
+      } catch (error) {
+        console.error('Error loading canvas:', error);
+      }
+    }
+
+
 
     document.getElementById('imgUploader').addEventListener('change', function(e) {
       const reader = new FileReader();
