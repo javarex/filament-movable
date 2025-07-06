@@ -42,7 +42,7 @@
   @endpush
   @endonce
   <div class="flex">
-  <input type="text" value="Untitled Document" id="document-title" class="text-2xl font-bold border-t-0 border-x-0 border-b-2 focus:outline-0 focus:ring-0 ">
+  <input type="text" value="{{isset($name_of_document) ? $name_of_document : 'Untitled Document'}}" id="document-title" class="text-2xl font-bold border-t-0 border-x-0 border-b-2 focus:outline-0 focus:ring-0 ">
   </div>
   <div class="toolbar">
     <div class="flex flex-col">
@@ -127,9 +127,9 @@
         <x-filament::input
           id="fontSize"
           type="number"
-          min="100"
-          :value="20"
-          x-on:input="changeFontSize(this.value)" />
+          min="5"
+          value="20"
+          x-on:input="changeFontSize($event.target.value)" />
       </x-filament::input.wrapper>
     </div>
 
@@ -262,12 +262,19 @@
       }
     }
 
-    function changeFontSize(size) {
+    function changeFontSize(input) {
       const obj = canvas.getActiveObject();
-      if (obj && obj.type === 'i-text') {
-        obj.set('fontSize', parseInt(size));
-        canvas.renderAll();
+      let size = parseInt(input);
+
+      if (!obj || obj.type !== 'i-text') return;
+
+      // fallback size if invalid
+      if (isNaN(size) || size <= 0) {
+        size = 20;
       }
+
+      obj.set('fontSize', size);
+      canvas.renderAll();
     }
 
     function changeTextAlign() {
@@ -500,6 +507,92 @@ async function loadCanvas(id) {
             loadCanvas(window.currentCanvasId);
         }
     });
+
+    let clipboardObject = null;
+
+document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+        copyObject();
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        e.preventDefault();
+        pasteObject();
+    }
+});
+
+function copyObject() {
+    const activeObject = canvas.getActiveObject();
+    if (!activeObject) return;
+
+    activeObject.clone(function (cloned) {
+        clipboardObject = cloned;
+    });
+}
+
+function pasteObject() {
+    if (!clipboardObject) return;
+
+    clipboardObject.clone(function (clonedObj) {
+        canvas.discardActiveObject();
+
+        clonedObj.set({
+            left: clonedObj.left + 20,
+            top: clonedObj.top + 20,
+            evented: true,
+        });
+
+        if (clonedObj.type === 'activeSelection') {
+            // If multiple objects are selected
+            clonedObj.canvas = canvas;
+            clonedObj.forEachObject(function (obj) {
+                canvas.add(obj);
+            });
+            clonedObj.setCoords();
+        } else {
+            canvas.add(clonedObj);
+        }
+
+        canvas.setActiveObject(clonedObj);
+        canvas.requestRenderAll();
+    });
+}
+
+document.addEventListener('keydown', function (e) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+
+    let moved = false;
+    const step = e.shiftKey ? 10 : 1; // move faster if shift is held
+
+    switch (e.key) {
+        case 'ArrowLeft':
+            obj.left -= step;
+            moved = true;
+            break;
+        case 'ArrowRight':
+            obj.left += step;
+            moved = true;
+            break;
+        case 'ArrowUp':
+            obj.top -= step;
+            moved = true;
+            break;
+        case 'ArrowDown':
+            obj.top += step;
+            moved = true;
+            break;
+    }
+
+    if (moved) {
+        obj.setCoords(); // update boundaries for selection/movement
+        canvas.renderAll();
+        e.preventDefault(); // prevent browser scrolling
+    }
+});
+
+
   </script>
   @endpush
   @endonce
