@@ -8,3 +8,4 @@ Route::get('/', function () {
 });
 Route::post('/save-html', [CanvasController::class, 'saveHtml']);
 Route::get('/canvas/{canvasExport}', [CanvasController::class, 'show']);
+Route::get('/canvas/{canvas}/edit', [CanvasController::class, 'edit']);

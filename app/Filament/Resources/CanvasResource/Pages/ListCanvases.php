@@ -9,6 +9,7 @@ use Filament\Resources\Pages\ListRecords;
 class ListCanvases extends ListRecords
 {
     protected static string $resource = CanvasResource::class;
+    
 
     protected function getHeaderActions(): array
     {

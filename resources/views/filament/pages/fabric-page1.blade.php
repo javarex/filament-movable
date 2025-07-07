@@ -424,8 +424,18 @@
 
 async function loadCanvas(id) {
     try {
-        const response = await fetch(`/canvas/${id}`);
-        const result = await response.json();
+        const path = window.location.pathname;
+        const segments = path.split('/').filter(Boolean);
+
+        let response, result;
+
+        if (segments.includes('edit')) {
+            response = await fetch(`/canvas/${id}/edit`);
+        } else {
+            response = await fetch(`/canvas/${id}`);
+        }
+
+        result = await response.json(); // ✅ Now result is available
 
         if (result.json) {
             const width = result.width ?? 800;

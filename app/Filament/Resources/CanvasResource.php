@@ -58,6 +58,7 @@ class CanvasResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -79,6 +80,7 @@ class CanvasResource extends Resource
             'index' => Pages\ListCanvases::route('/'),
             'create' => Pages\CreateCanvas::route('/create'),
             'edit' => Pages\EditCanvas::route('/{record}/edit'),
+            'view' => Pages\ViewCanvas::route('/{record}'),
         ];
     }
 }

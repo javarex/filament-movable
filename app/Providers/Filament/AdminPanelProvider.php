@@ -27,6 +27,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->favicon('https://www.google.com/favicon.ico')
             ->maxContentWidth('full')
             ->darkMode(false)
             ->colors([
